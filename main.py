@@ -70,9 +70,11 @@ def verificar_e_enviar():
     try:
         registros = aba.get_all_records()
         mensagens_enviadas = 0
+        print(f"Registros encontrados na planilha: {registros}")
 
         for index, linha in enumerate(registros, start=2):
             status = str(linha.get("Status", "")).strip().lower()
+            print(f"Linha {index} - Status lido: '{status}'")
             
             if status == "enviar":
                 nome_cliente = linha.get("Tutor", "Cliente")
@@ -110,6 +112,7 @@ def verificar_e_enviar():
         return jsonify({"sucesso": True, "mensagens_enviadas": mensagens_enviadas})
 
     except Exception as e:
+        print(f"Erro interno no processamento: {str(e)}")
         return jsonify({"erro": str(e)}), 500
 
 if __name__ == "__main__":

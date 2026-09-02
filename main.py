@@ -5,13 +5,24 @@ import requests
 
 app = Flask(__name__)
 
-# Carrega as credenciais do arquivo credentials.json
+# Carrega as credenciais de forma segura (do arquivo local ou das Variáveis de Ambiente da nuvem)
 def load_credentials():
+    # Tenta pegar das variáveis de ambiente do Render primeiro
+    phone_number_id = os.environ.get("PHONE_NUMBER_ID")
+    access_token = os.environ.get("ACCESS_TOKEN")
+    
+    if phone_number_id and access_token:
+        return {
+            "phone_number_id": phone_number_id,
+            "access_token": access_token
+        }
+    
+    # Se não estiver nas variáveis de ambiente, tenta ler do arquivo local (para testes no PC)
     try:
         with open("credentials.json", "r") as f:
             return json.load(f)
     except Exception as e:
-        print(f"Erro ao carregar credentials.json: {e}")
+        print(f"Aviso: credentials.json não encontrado e variáveis de ambiente não definidas: {e}")
         return {}
 
 @app.route("/", methods=["GET"])
@@ -22,13 +33,11 @@ def home():
 def enviar_cobranca():
     creds = load_credentials()
     
-    # Exemplo de chaves esperadas no credentials.json da Meta
-    # phone_number_id, access_token, etc.
     phone_number_id = creds.get("phone_number_id")
     access_token = creds.get("access_token")
     
     if not phone_number_id or not access_token:
-        return jsonify({"erro": "Credenciais incompletas no credentials.json"}), 400
+        return jsonify({"erro": "Credenciais incompletas. Verifique as variáveis de ambiente ou o credentials.json"}), 400
 
     dados = request.json
     telefone_cliente = dados.get("telefone") # Ex: 5524999999999

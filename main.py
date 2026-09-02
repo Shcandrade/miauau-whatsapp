@@ -15,7 +15,7 @@ SCOPES = [
 ]
 
 def conectar_planilha():
-    """Conecta ao Google Sheets usando credenciais da Service Account e aba específica"""
+    """Conecta ao Google Sheets usando o ID da planilha e a aba específica"""
     try:
         creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
         if creds_json:
@@ -26,11 +26,10 @@ def conectar_planilha():
             
         client = gspread.authorize(creds)
         
-        # Pega o nome da planilha pelas variáveis de ambiente
-        nome_planilha = os.environ.get("NOME_PLANILHA", "Cobranças Banho e Tosa")
-        planilha = client.open(nome_planilha)
+        # Conexão direta pelo ID da planilha
+        sheet_id = "1Rkdx3-Hs-TgAIHSpHha7UK-4irJwlZes0c8DoeHHn50"
+        planilha = client.open_by_key(sheet_id)
         
-        # Ajustado para abrir exatamente a aba correta
         return planilha.worksheet("Cobranças Banho e Tosa")
     except Exception as e:
         print(f"Erro ao conectar na planilha: {e}")
@@ -76,7 +75,6 @@ def verificar_e_enviar():
             status = str(linha.get("Status", "")).strip().lower()
             
             if status == "enviar":
-                # Ajustado de "Nome" para "Tutor" conforme a sua planilha
                 nome_cliente = linha.get("Tutor", "Cliente")
                 telefone = str(linha.get("Telefone", "")).strip()
                 valor = linha.get("Valor", "0,00")

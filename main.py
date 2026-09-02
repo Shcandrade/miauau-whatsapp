@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import re
 from flask import Flask, request, jsonify
 import requests
 import gspread
@@ -60,15 +61,13 @@ def verificar_e_enviar():
         return jsonify({"erro": "Credenciais da Meta não configuradas."}), 400
 
     try:
-        # Pega todas as linhas como lista pura para inspecionar
         linhas = aba.get_all_values()
         
         if not linhas or len(linhas) < 2:
-            return jsonify({"aviso": "A planilha está vazia ou tem apenas o cabeçalho.", "conteudo_lido": linhas})
+            return jsonify({"aviso": "A planilha está vazia ou tem apenas o cabeçalho."})
 
         cabecalho = [h.strip().lower() for h in linhas[0]]
         
-        # Tenta achar a posição da coluna "status" e "tutor"
         try:
             idx_status = cabecalho.index("status")
             idx_tutor = cabecalho.index("tutor")
@@ -76,23 +75,27 @@ def verificar_e_enviar():
             idx_valor = cabecalho.index("valor")
             idx_pet = cabecalho.index("pet")
         except ValueError as e:
-            return jsonify({"erro": f"Coluna não encontrada no cabeçalho: {e}. Cabeçalhos lidos: {cabecalho}"})
+            return jsonify({"erro": f"Coluna não encontrada no cabeçalho: {e}"})
 
         mensagens_enviadas = 0
+        status_lidos = []
 
-        # Varre da linha 2 em diante (índice 1 em diante na lista)
         for i in range(1, len(linhas)):
             linha = linhas[i]
             
-            # Garante que a linha tem colunas suficientes
             if len(linha) <= idx_status:
                 continue
                 
-            status = linha[idx_status].strip().lower()
+            # Limpa rigorosamente qualquer espaço ou sujeira do texto lido
+            status_bruto = linha[idx_status]
+            status = str(status_bruto).strip().lower()
+            status_lidos.append(f"Linha {i+1}: '{status}'")
             
-            if status == "enviar":
+            # Condição mais flexível para capturar o "enviar"
+            if "enviar" in status:
                 nome_cliente = linha[idx_tutor] if len(linha) > idx_tutor else "Cliente"
-                telefone = linha[idx_telefone].strip() if len(linha) > idx_telefone else ""
+                telefone_raw = linha[idx_telefone] if len(linha) > idx_telefone else ""
+                telefone = re.sub(r'\D', '', str(telefone_raw))
                 valor = linha[idx_valor] if len(linha) > idx_valor else "0,00"
                 pet = linha[idx_pet] if len(linha) > idx_pet else "seu pet"
 
@@ -115,13 +118,17 @@ def verificar_e_enviar():
 
                 response = requests.post(url, headers=headers, json=payload)
 
-                if response.status_code == 200:
+                if response.status_code in [200, 201]:
                     aba.update_cell(i + 1, idx_status + 1, "enviado")
                     mensagens_enviadas += 1
                 
                 time.sleep(1)
 
-        return jsonify({"sucesso": True, "mensagens_enviadas": mensagens_enviadas, "cabecalhos_detectados": cabecalho})
+        return jsonify({
+            "sucesso": True, 
+            "mensagens_enviadas": mensagens_enviadas, 
+            "status_lidos_na_planilha": status_lidos
+        })
 
     except Exception as e:
         return jsonify({"erro": str(e)}), 500

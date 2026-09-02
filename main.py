@@ -86,12 +86,10 @@ def verificar_e_enviar():
             if len(linha) <= idx_status:
                 continue
                 
-            # Limpa rigorosamente qualquer espaço ou sujeira do texto lido
             status_bruto = linha[idx_status]
             status = str(status_bruto).strip().lower()
             status_lidos.append(f"Linha {i+1}: '{status}'")
             
-            # Condição mais flexível para capturar o "enviar"
             if "enviar" in status:
                 nome_cliente = linha[idx_tutor] if len(linha) > idx_tutor else "Cliente"
                 telefone_raw = linha[idx_telefone] if len(linha) > idx_telefone else ""
@@ -121,6 +119,12 @@ def verificar_e_enviar():
                 if response.status_code in [200, 201]:
                     aba.update_cell(i + 1, idx_status + 1, "enviado")
                     mensagens_enviadas += 1
+                else:
+                    # Retorna o erro exato que a Meta enviou para sabermos o motivo da recusa
+                    return jsonify({
+                        "erro_meta": response.text, 
+                        "status_code_meta": response.status_code
+                    }), 400
                 
                 time.sleep(1)
 
